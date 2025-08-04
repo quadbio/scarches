@@ -277,6 +277,10 @@ class scPoli(BaseMixin):
              Learning rate for training the model.
         eps
              torch.optim.Adam eps parameter
+        clustering_method : Literal["scanpy", "rapids"], optional
+             Method to use for clustering acceleration during prototype training. 
+             "rapids" uses rapids_singlecell for GPU acceleration if available, 
+             otherwise falls back to scanpy. Default is "scanpy".
         kwargs
              kwargs for the scPoli trainer.
         """

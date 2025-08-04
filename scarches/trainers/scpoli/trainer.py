@@ -1,5 +1,6 @@
 import time
 from collections import defaultdict
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -63,6 +64,9 @@ class scPoliTrainer:
     clustering_res: Float
         Clustering resolution to use for leiden clustering. Bigger values result in
         finer clusters.
+    clustering_method: Literal["scanpy", "rapids"]
+        Method to use for clustering acceleration. "rapids" uses rapids_singlecell for GPU acceleration
+        if available, otherwise falls back to scanpy. Default is "scanpy".
     n_clusters: Integer
         Number of clusters to set for KMeans algorithm.
     unlabeled_weight: Float
@@ -95,6 +99,7 @@ class scPoliTrainer:
         pretraining_epochs=None,
         clustering: str = "leiden",
         clustering_res: float = 2,
+        clustering_method: Literal["scanpy", "rapids"] = "scanpy",
         n_clusters: int = None,
         unlabeled_weight: float = 0,
         eta: float = 1,
@@ -183,6 +188,7 @@ class scPoliTrainer:
         self.eta = eta
         self.p_prototype_loss = p_prototype_loss
         self.clustering = clustering
+        self.clustering_method = clustering_method
         self.n_clusters = n_clusters
         self.unlabeled_weight = unlabeled_weight
         self.clustering_res = clustering_res
@@ -475,17 +481,33 @@ class scPoliTrainer:
             else:
                 if self.clustering == "kmeans" and self.n_clusters is None:
                     print(
-                        f"\nInitializing unlabeled prototypes with Leiden "
-                        f"because no value for the number of clusters was given."
+                        "\nInitializing unlabeled prototypes with Leiden "
+                        "because no value for the number of clusters was given."
                     )
                 else:
                     print(
-                        f"\nInitializing unlabeled prototypes with Leiden "
-                        f"with an unknown number of  clusters."
+                        "\nInitializing unlabeled prototypes with Leiden "
+                        "with an unknown number of  clusters."
                     )
                 lat_adata = sc.AnnData(lat_array)
-                sc.pp.neighbors(lat_adata)
-                sc.tl.leiden(lat_adata, resolution=self.clustering_res)
+                
+                # Check if rapids is available and requested
+                if self.clustering_method == "rapids":
+                    try:
+                        import rapids_singlecell as rsc
+                        print("Using rapids_singlecell for accelerated clustering")
+                        # Perform neighbor computation and clustering with rapids
+                        rsc.pp.neighbors(lat_adata)
+                        rsc.tl.leiden(lat_adata, resolution=self.clustering_res)
+                    except ImportError:
+                        print("rapids_singlecell not available, falling back to scanpy")
+                        # Fallback to scanpy
+                        sc.pp.neighbors(lat_adata)
+                        sc.tl.leiden(lat_adata, resolution=self.clustering_res)
+                else:
+                    # Use scanpy (default)
+                    sc.pp.neighbors(lat_adata)
+                    sc.tl.leiden(lat_adata, resolution=self.clustering_res)
 
                 features = pd.DataFrame(
                     lat_adata.X, index=np.arange(0, lat_adata.shape[0])
