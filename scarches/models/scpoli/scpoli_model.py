@@ -344,14 +344,15 @@ class scPoli(BaseMixin):
                 for condition, label in self.model.condition_encoders[cond].items():
                     labels[query_conditions == condition] = label
                 label_tensor.append(labels)
-            c = torch.tensor(label_tensor, device=device).T
+            c = torch.tensor(np.array(label_tensor), device=device).T
  
         latents = []
         # batch the latent transformation process
         indices = torch.arange(x.shape[0])
         subsampled_indices = indices.split(512)
         for batch in subsampled_indices:
-            x_batch = x[batch, :]
+            batch_np = batch.numpy()  # Convert torch tensor to numpy for scipy sparse indexing
+            x_batch = x[batch_np, :]
             if sparse.issparse(x_batch):
                 x_batch = x_batch.toarray()
             x_batch = torch.tensor(x_batch, device=device).float()
@@ -451,7 +452,7 @@ class scPoli(BaseMixin):
                     for condition, label in self.model.condition_encoders[cond].items():
                         labels[query_conditions == condition] = label
                     label_tensor.append(labels)
-                c = torch.tensor(label_tensor, device=device).T
+                c = torch.tensor(np.array(label_tensor), device=device).T
         else:
             x = adata
 
@@ -566,7 +567,7 @@ class scPoli(BaseMixin):
                 for condition, label in self.model.condition_encoders[cond].items():
                     labels[query_conditions == condition] = label
                 label_tensor.append(labels)
-            c = torch.tensor(label_tensor, device=device).T
+            c = torch.tensor(np.array(label_tensor), device=device).T
 
         if sparse.issparse(x):
             x = x.A
