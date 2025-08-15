@@ -25,6 +25,7 @@ def partition(data, partitions, num_partitions):
         res += [data[indices]]
     return res
 
+
 def reads_to_fragments(
     adata: ad.AnnData,
     layer: Optional[str] = None,
